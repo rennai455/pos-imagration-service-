@@ -4,6 +4,7 @@ process.env.SUPABASE_KEY = process.env.SUPABASE_KEY ?? "test-service-role";
 process.env.DATABASE_URL =
   process.env.DATABASE_URL ?? "postgresql://user:password@localhost:5432/pos_test";
 process.env.PORT = process.env.PORT ?? "4000";
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? "test-secret";
 
 const signInWithPassword = jest.fn();
 const createClient = jest.fn(() => ({
