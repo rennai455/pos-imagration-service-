@@ -9,6 +9,7 @@
     "assetBundlePatterns": ["**/*"],
     "updates": {
       "fallbackToCacheTimeout": 0
-    }
+    },
+    "plugins": ["expo-router"]
   }
 }
