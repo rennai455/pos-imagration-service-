@@ -24,3 +24,16 @@ export function logout() {
   localStorage.removeItem("token");
   supabase.auth.signOut();
 }
+
+export function watchSession() {
+  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (!session) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+  });
+
+  return () => {
+    data.subscription.unsubscribe();
+  };
+}
