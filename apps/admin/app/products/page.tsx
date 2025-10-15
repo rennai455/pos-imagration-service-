@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiRequest } from "../../lib/api";
 import { logout } from "../../lib/auth";
+import Loader from "../../components/Loader";
+import { Toast } from "../../components/Toast";
 
 type Product = {
   id: string;
@@ -16,7 +18,20 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState("");
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
+
+  function showToast(message: string) {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToastMessage("");
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(message);
+    }, 0);
+  }
 
   async function fetchProducts() {
     try {
@@ -25,7 +40,9 @@ export default function ProductsPage() {
       setProducts(Array.isArray(data) ? data : []);
       setError(null);
     } catch (err: any) {
-      setError(err.message || "Failed to load products");
+      const message = err.message || "Failed to load products";
+      setError(message);
+      showToast(message);
     } finally {
       setLoading(false);
     }
@@ -33,15 +50,25 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
+    return () => {
+      if (toastTimeoutRef.current) {
+        clearTimeout(toastTimeoutRef.current);
+      }
+    };
   }, []);
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this product?")) return;
+    setDeletingId(id);
     try {
       await apiRequest(`/api/products/${id}`, { method: "DELETE" });
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      showToast("Product deleted successfully.");
     } catch (err: any) {
-      alert(err.message);
+      const message = err.message || "Failed to delete product";
+      showToast(message);
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -64,10 +91,18 @@ export default function ProductsPage() {
         </div>
       </div>
       {loading ? (
-        <p>Loading products...</p>
+        <Loader />
       ) : error ? (
         <div className="rounded border border-red-300 bg-red-50 p-3 text-red-700">
-          {error}
+          <div className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={fetchProducts}
+              className="text-sm font-medium text-red-700 underline"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -98,8 +133,12 @@ export default function ProductsPage() {
                         <Link href={`/products/edit/${product.id}`} className="text-blue-500">
                           Edit
                         </Link>
-                        <button onClick={() => handleDelete(product.id)} className="text-red-500">
-                          Delete
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className="text-red-500 disabled:opacity-50"
+                          disabled={deletingId === product.id}
+                        >
+                          {deletingId === product.id ? "Deleting..." : "Delete"}
                         </button>
                       </div>
                     </td>
@@ -110,6 +149,7 @@ export default function ProductsPage() {
           </table>
         </div>
       )}
+      <Toast message={toastMessage} />
     </div>
   );
 }

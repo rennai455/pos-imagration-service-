@@ -2,21 +2,29 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "../../lib/auth";
+import { Toast } from "../../components/Toast";
+import Loader from "../../components/Loader";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!email || !password) {
+      setError("Email and password are required.");
+      return;
+    }
     setLoading(true);
+    setError("");
     try {
       await login(email, password);
       router.push("/products");
     } catch (err: any) {
-      alert(err.message);
+      setError(err.message || "Failed to sign in");
     } finally {
       setLoading(false);
     }
@@ -42,14 +50,12 @@ export default function LoginPage() {
           className="border p-2 rounded"
           required
         />
-        <button
-          type="submit"
-          className="bg-black text-white p-2 rounded disabled:opacity-60"
-          disabled={loading}
-        >
+        <button type="submit" disabled={loading} className="bg-black text-white p-2 rounded disabled:opacity-60">
           {loading ? "Signing In..." : "Sign In"}
         </button>
       </form>
+      {loading && <Loader />}
+      {error && <Toast message={error} />}
     </div>
   );
 }
