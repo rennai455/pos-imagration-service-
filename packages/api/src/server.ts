@@ -46,10 +46,7 @@ const start = async () => {
   const server = await buildServer();
 
   try {
-    const port = Number(process.env.PORT ?? 4000);
-    const host = process.env.HOST ?? "0.0.0.0";
-
-    await server.listen({ port, host });
+    await server.listen({ port: 4000, host: "0.0.0.0" });
     server.log.info("Codex API running");
   } catch (err) {
     server.log.error(err);

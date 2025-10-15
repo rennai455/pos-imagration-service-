@@ -8,9 +8,13 @@ const SYNC_TASK = "codex-sync-products";
 let networkSubscription: (() => void) | null = null;
 let taskDefined = false;
 
-export async function syncProducts() {
+async function hasConnectivity() {
   const state = await NetInfo.fetch();
-  if (!state.isConnected) return;
+  return Boolean(state.isConnected && state.isInternetReachable !== false);
+}
+
+export async function syncProducts() {
+  if (!(await hasConnectivity())) return;
 
   const rows = await new Promise<ProductRecord[]>((resolve) => {
     getUnsynced((products) => resolve(products));
@@ -18,6 +22,10 @@ export async function syncProducts() {
 
   for (const product of rows) {
     try {
+      if (!(await hasConnectivity())) {
+        console.warn("Network connection lost during sync");
+        break;
+      }
       await apiRequest("/api/products", {
         method: "POST",
         body: JSON.stringify({ ...product, updatedAt: product.updatedAt }),
@@ -35,7 +43,7 @@ export function startSyncListener() {
   if (networkSubscription) return;
 
   networkSubscription = NetInfo.addEventListener((state) => {
-    if (state.isConnected) {
+    if (state.isConnected && state.isInternetReachable !== false) {
       syncProducts().catch((err) => console.error("Sync listener error", err));
     }
   });
