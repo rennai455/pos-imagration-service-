@@ -7,6 +7,12 @@ const mockPrisma = {
   },
 };
 
+const tokenPayload = {
+  id: "tenant_user_1",
+  storeId: "store_1",
+  email: "user@example.com",
+};
+
 type BuildServer = typeof import("../src/server").buildServer;
 let buildServer: BuildServer;
 
@@ -28,7 +34,21 @@ afterEach(() => {
 });
 
 describe("/api/products", () => {
-  it("returns a list of products", async () => {
+  it("rejects requests without a token", async () => {
+    const app = await buildServer();
+    await app.ready();
+
+    try {
+      const response = await request(app.server).get("/api/products");
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ error: "Missing token" });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("returns a list of products scoped to the user's store", async () => {
     const createdAt = new Date("2024-01-01T00:00:00.000Z");
     mockPrisma.product.findMany.mockResolvedValueOnce([
       {
@@ -47,9 +67,14 @@ describe("/api/products", () => {
     await app.ready();
 
     try {
-      const response = await request(app.server).get("/api/products");
+      const response = await request(app.server)
+        .get("/api/products")
+        .set("Authorization", `Bearer ${createToken()}`);
 
       expect(response.status).toBe(200);
+      expect(mockPrisma.product.findMany).toHaveBeenCalledWith({
+        where: { storeId: tokenPayload.storeId },
+      });
       expect(response.body).toEqual([
         expect.objectContaining({
           id: "prod_1",
@@ -84,11 +109,11 @@ describe("/api/products", () => {
     try {
       const response = await request(app.server)
         .post("/api/products")
+        .set("Authorization", `Bearer ${createToken()}`)
         .send({
           name: "Validated Product",
           price: 10.99,
           stock: 5,
-          storeId: "store_2",
           description: "Great",
           barcode: "1234567890",
         });
@@ -99,7 +124,7 @@ describe("/api/products", () => {
           name: "Validated Product",
           price: 10.99,
           stock: 5,
-          storeId: "store_2",
+          storeId: tokenPayload.storeId,
           description: "Great",
           barcode: "1234567890",
         }),
@@ -122,11 +147,11 @@ describe("/api/products", () => {
     try {
       const response = await request(app.server)
         .post("/api/products")
+        .set("Authorization", `Bearer ${createToken()}`)
         .send({
           name: "",
           price: -1,
           stock: -5,
-          storeId: "",
         });
 
       expect(response.status).toBe(400);
@@ -137,3 +162,8 @@ describe("/api/products", () => {
     }
   });
 });
+
+function createToken() {
+  const { signToken } = require("../src/utils/token");
+  return signToken(tokenPayload);
+}

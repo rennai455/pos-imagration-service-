@@ -5,6 +5,9 @@ const mockPrisma = {
     findMany: jest.fn(),
     create: jest.fn(),
   },
+  user: {
+    findUnique: jest.fn(),
+  },
 };
 
 type BuildServer = typeof import("../src/server").buildServer;
@@ -25,6 +28,7 @@ const signInWithPassword = (globalThis as unknown as {
 beforeEach(() => {
   mockPrisma.product.findMany.mockReset();
   mockPrisma.product.create.mockReset();
+  mockPrisma.user.findUnique.mockReset();
   signInWithPassword.mockReset();
 });
 
@@ -51,6 +55,8 @@ describe("/api/auth/login", () => {
       error: { message: "Invalid login" },
     });
 
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+
     const app = await buildServer();
     await app.ready();
 
@@ -62,12 +68,13 @@ describe("/api/auth/login", () => {
 
       expect(response.status).toBe(401);
       expect(response.body).toEqual({ error: "Invalid login" });
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }
   });
 
-  it("returns session details on successful login", async () => {
+  it("returns 404 when user is missing in tenant database", async () => {
     const session = { access_token: "token" };
     const user = { id: "user_1", email: "user@example.com" };
 
@@ -75,6 +82,44 @@ describe("/api/auth/login", () => {
       data: { session, user },
       error: null,
     });
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+    const app = await buildServer();
+    await app.ready();
+
+    try {
+      const response = await request(app.server).post("/api/auth/login").send({
+        email: "user@example.com",
+        password: "correct",
+      });
+
+      expect(response.status).toBe(404);
+      expect(response.body).toEqual({
+        error: "User not found in tenant database",
+      });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("returns JWT and user details on successful login", async () => {
+    const session = { access_token: "token" };
+    const user = { id: "user_1", email: "user@example.com" };
+
+    signInWithPassword.mockResolvedValueOnce({
+      data: { session, user },
+      error: null,
+    });
+
+    const tenantUser = {
+      id: "tenant_user_1",
+      email: "user@example.com",
+      storeId: "store_123",
+      createdAt: new Date("2024-01-01T00:00:00.000Z"),
+    };
+
+    mockPrisma.user.findUnique.mockResolvedValueOnce(tenantUser);
 
     const app = await buildServer();
     await app.ready();
@@ -86,7 +131,20 @@ describe("/api/auth/login", () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ session, user });
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { email: "user@example.com" },
+        select: {
+          id: true,
+          email: true,
+          storeId: true,
+          createdAt: true,
+        },
+      });
+      expect(response.body).toEqual({
+        session,
+        token: expect.any(String),
+        user: tenantUser,
+      });
     } finally {
       await app.close();
     }

@@ -2,21 +2,24 @@ import { prisma } from "@codex/db";
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
 
+import { verifyAuth } from "../plugins/auth";
+
 const productSchema = z
   .object({
     name: z.string().min(1, "Name is required"),
     price: z.coerce.number().gt(0, "Price must be a positive number"),
     stock: z.coerce.number().int().min(0, "Stock must be a non-negative integer"),
-    storeId: z.string().min(1, "Store ID is required"),
     description: z.string().optional(),
     barcode: z.string().optional(),
   })
   .strict();
 
 export default async function (server: FastifyInstance) {
-  server.get("/", async () => prisma.product.findMany());
+  server.get("/", { preHandler: verifyAuth }, async (req) =>
+    prisma.product.findMany({ where: { storeId: req.user!.storeId } }),
+  );
 
-  server.post("/", async (req, reply) => {
+  server.post("/", { preHandler: verifyAuth }, async (req, reply) => {
     const parsed = productSchema.safeParse(req.body);
 
     if (!parsed.success) {
@@ -31,6 +34,7 @@ export default async function (server: FastifyInstance) {
     const product = await prisma.product.create({
       data: {
         ...parsed.data,
+        storeId: req.user!.storeId,
         description: parsed.data.description ?? null,
         barcode: parsed.data.barcode ?? null,
       },
