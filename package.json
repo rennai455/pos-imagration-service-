@@ -1,0 +1,12 @@
+{
+  "name": "pos-imagration-service",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@8.15.4",
+  "scripts": {
+    "dev:admin": "pnpm --filter admin dev",
+    "dev:sdk": "pnpm --filter sdk start",
+    "build:admin": "pnpm --filter admin build",
+    "lint:admin": "pnpm --filter admin lint"
+  }
+}
