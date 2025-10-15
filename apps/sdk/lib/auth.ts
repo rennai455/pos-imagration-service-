@@ -1,5 +1,5 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import * as SecureStore from "expo-secure-store";
 import { API_URL } from "./api";
 
 const TOKEN_KEY = "codex/sdk/token";
@@ -16,7 +16,11 @@ export function getSupabaseClient() {
 
     supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
-        storage: AsyncStorage,
+        storage: {
+          getItem: (key) => SecureStore.getItemAsync(key),
+          setItem: (key, value) => SecureStore.setItemAsync(key, value),
+          removeItem: (key) => SecureStore.deleteItemAsync(key),
+        },
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: false,
@@ -59,15 +63,15 @@ export async function exchangeSupabaseTokenForJwt(accessToken: string) {
 }
 
 export async function setToken(token: string) {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
 export async function getToken() {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  return SecureStore.getItemAsync(TOKEN_KEY);
 }
 
 export async function clearSession() {
-  await AsyncStorage.removeItem(TOKEN_KEY);
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
   if (supabase) {
     await supabase.auth.signOut();
   }
