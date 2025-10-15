@@ -3,18 +3,24 @@
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
-    "fastify": "^4.24.3",
-    "@prisma/client": "^5.15.0",
-    "@supabase/supabase-js": "^2.38.0"
+    "@codex/db": "workspace:*",
+    "@fastify/cors": "^8.4.1",
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^16.3.1",
+    "fastify": "^4.24.3"
   },
   "devDependencies": {
-    "typescript": "^5.3.3",
-    "ts-node": "^10.9.2",
-    "prisma": "^5.15.0"
+    "@types/node": "^20.11.17",
+    "prisma": "^5.15.0",
+    "pino-pretty": "^10.3.1",
+    "tsx": "^4.7.1",
+    "typescript": "^5.3.3"
   }
 }
