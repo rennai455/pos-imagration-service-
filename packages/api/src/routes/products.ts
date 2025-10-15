@@ -1,53 +1,38 @@
-import { FastifyInstance } from "fastify";
 import { prisma } from "@codex/db";
+import { FastifyInstance } from "fastify";
+import { z } from "zod";
 
-interface ProductInput {
-  name: string;
-  price: number;
-  stock: number;
-  storeId: string;
-  description?: string;
-  barcode?: string;
-}
+const productSchema = z
+  .object({
+    name: z.string().min(1, "Name is required"),
+    price: z.coerce.number().gt(0, "Price must be a positive number"),
+    stock: z.coerce.number().int().min(0, "Stock must be a non-negative integer"),
+    storeId: z.string().min(1, "Store ID is required"),
+    description: z.string().optional(),
+    barcode: z.string().optional(),
+  })
+  .strict();
 
 export default async function (server: FastifyInstance) {
   server.get("/", async () => prisma.product.findMany());
 
   server.post("/", async (req, reply) => {
-    const data = req.body as Partial<ProductInput>;
+    const parsed = productSchema.safeParse(req.body);
 
-    if (!data || typeof data !== "object") {
-      return reply.code(400).send({ error: "Invalid payload" });
-    }
+    if (!parsed.success) {
+      const errors = parsed.error.errors.map((error) => ({
+        path: error.path.join("."),
+        message: error.message,
+      }));
 
-    const required: (keyof ProductInput)[] = ["name", "price", "stock", "storeId"];
-    const missing = required.filter((field) => data[field] === undefined || data[field] === null);
-
-    if (missing.length > 0) {
-      return reply
-        .code(400)
-        .send({ error: `Missing required fields: ${missing.join(", ")}` });
-    }
-
-    const price = Number(data.price);
-    const stock = Number(data.stock);
-
-    if (!Number.isFinite(price) || price < 0) {
-      return reply.code(400).send({ error: "Price must be a positive number" });
-    }
-
-    if (!Number.isInteger(stock) || stock < 0) {
-      return reply.code(400).send({ error: "Stock must be a non-negative integer" });
+      return reply.code(400).send({ error: "Validation failed", details: errors });
     }
 
     const product = await prisma.product.create({
       data: {
-        name: data.name!,
-        price,
-        stock,
-        storeId: data.storeId!,
-        description: data.description ?? null,
-        barcode: data.barcode ?? null,
+        ...parsed.data,
+        description: parsed.data.description ?? null,
+        barcode: parsed.data.barcode ?? null,
       },
     });
 
