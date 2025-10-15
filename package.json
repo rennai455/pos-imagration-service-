@@ -9,7 +9,14 @@
     "dev:admin": "pnpm --filter @codex/admin dev",
     "dev:sdk": "pnpm --filter @codex/sdk start",
     "build": "pnpm -r --filter @codex/* run build",
+    "build:api": "pnpm --filter @codex/api build",
     "build:admin": "pnpm --filter @codex/admin build",
+    "test:api": "pnpm --filter @codex/api test",
     "lint:admin": "pnpm --filter @codex/admin lint"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.0"
   }
 }

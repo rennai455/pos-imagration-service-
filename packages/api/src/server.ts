@@ -1,27 +1,35 @@
 import "dotenv/config";
 
 import cors from "@fastify/cors";
-import Fastify from "fastify";
+import Fastify, { FastifyInstance } from "fastify";
 
 import authRoutes from "./routes/auth";
 import productRoutes from "./routes/products";
 
-const server = Fastify({
-  logger: {
-    transport:
-      process.env.NODE_ENV === "development"
-        ? {
-            target: "pino-pretty",
-            options: {
-              colorize: true,
-              translateTime: "SYS:standard",
-            },
-          }
-        : undefined,
-  },
-});
+const createServer = (): FastifyInstance =>
+  Fastify({
+    logger: {
+      transport:
+        process.env.NODE_ENV === "development"
+          ? {
+              target: "pino-pretty",
+              options: {
+                colorize: true,
+                translateTime: "SYS:standard",
+              },
+            }
+          : undefined,
+    },
+  });
 
-const configure = async () => {
+export const buildServer = async (): Promise<FastifyInstance> => {
+  const server = createServer();
+
+  server.setErrorHandler((err, req, reply) => {
+    server.log.error(err);
+    reply.code(500).send({ error: "Internal Server Error" });
+  });
+
   await server.register(cors, {
     origin: true,
   });
@@ -30,20 +38,28 @@ const configure = async () => {
   await server.register(authRoutes, { prefix: "/api/auth" });
 
   server.get("/", async () => ({ status: "Codex API running" }));
+
+  return server;
 };
 
 const start = async () => {
-  try {
-    await configure();
+  const server = await buildServer();
 
+  try {
     const port = Number(process.env.PORT ?? 4000);
     const host = process.env.HOST ?? "0.0.0.0";
 
     await server.listen({ port, host });
+    server.log.info("Codex API running");
   } catch (err) {
     server.log.error(err);
     process.exit(1);
   }
 };
 
-start();
+if (require.main === module) {
+  start().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
