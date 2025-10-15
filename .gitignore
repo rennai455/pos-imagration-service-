@@ -1,0 +1,17 @@
+node_modules
+.pnpm-store
+.env
+.env.local
+.env.development
+.env.production
+!.env.example
+dist
+.next
+expo
+.expo
+.expo-shared
+.DS_Store
+.idea
+.vscode
+coverage
+pnpm-lock.yaml
