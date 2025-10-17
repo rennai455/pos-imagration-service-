@@ -116,7 +116,7 @@ describe("/api/auth/login", () => {
       id: "tenant_user_1",
       email: "user@example.com",
       storeId: "store_123",
-      createdAt: new Date("2024-01-01T00:00:00.000Z"),
+      createdAt: "2024-01-01T00:00:00.000Z",
     };
 
     mockPrisma.user.findUnique.mockResolvedValueOnce(tenantUser);

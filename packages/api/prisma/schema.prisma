@@ -1,1 +1,39 @@
-../../db/prisma/schema.prisma
+datasource db {../../db/prisma/schema.prisma
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Store {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  products  Product[]
+  users     User[]
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  stock       Int
+  barcode     String?
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String
+  storeId     String
+  store       Store    @relation(fields: [storeId], references: [id])
+  password    String?  // Nullable since we use Supabase for auth
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

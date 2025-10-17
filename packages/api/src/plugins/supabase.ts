@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const requiredEnv = ["SUPABASE_URL", "SUPABASE_KEY"] as const;
+const requiredEnv = ["SUPABASE_URL", "SUPABASE_ANON_KEY"] as const;
 
 for (const key of requiredEnv) {
   if (!process.env[key]) {
@@ -10,5 +10,5 @@ for (const key of requiredEnv) {
 
 export const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_KEY!
+  process.env.SUPABASE_ANON_KEY!
 );
