@@ -66,16 +66,24 @@ jobs:
       - uses: actions/checkout@v4
       - name: Health gate (wait for /livez)
         run: |
-          set -e
-          for i in $(seq 1 30); do
-            if curl -sf "${{ vars.STAGING_URL }}/livez" > /dev/null; then echo "livez OK"; break; fi
-            sleep 2
-            if [ "$i" -eq 30 ]; then echo "livez did not become healthy"; exit 1; fi
+          tries=0; delay=2
+          while [ $tries -lt 40 ]; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "${{ vars.STAGING_URL }}/livez")
+            echo "try=$tries code=$code"
+            if [ "$code" = "200" ]; then echo "livez OK"; break; fi
+            sleep $delay; tries=$((tries+1)); delay=$(( delay<10 ? delay+1 : 10 ))
           done
+          [ $tries -lt 40 ] || { echo "livez did not become healthy"; exit 1; }
       - name: Smoke Gate
         run: |
           chmod +x scripts/smoke.sh
           API_URL="${{ vars.STAGING_URL }}" WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}" ./scripts/smoke.sh
+      - name: Snapshot metrics
+        run: curl -fsSL "${{ vars.STAGING_URL }}/metrics" > metrics.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metrics-snapshot-staging
+          path: metrics.txt
 
   loadtest_gate:
     name: Load Test Gate (tags)

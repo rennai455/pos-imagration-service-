@@ -20,7 +20,15 @@ export default async function (server: FastifyInstance) {
     // Sign in with retry using decorrelated jitter
     const { retry } = await import('../utils/reliability');
     const { data, error } = await retry(
-      () => supabase.auth.signInWithPassword({ email, password }),
+      async () => {
+        const res = await supabase.auth.signInWithPassword({ email, password });
+        if (res.error && (res.error.status >= 500 || res.error.status === 429)) {
+          const e: any = new Error(res.error.message);
+          e.status = res.error.status;
+          throw e;
+        }
+        return res;
+      },
       { attempts: 3, baseDelay: 300, maxDelay: 2000, jitter: true, labels: { service: 'supabase', tenant: 'unknown' } }
     );
 

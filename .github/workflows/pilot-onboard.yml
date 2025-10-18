@@ -35,8 +35,13 @@ jobs:
         run: |
           chmod +x scripts/smoke.sh
           API_URL="${{ steps.env.outputs.url }}" WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}" ./scripts/smoke.sh
+      - name: Snapshot metrics
+        run: curl -fsSL "${{ steps.env.outputs.url }}/metrics" > metrics.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metrics-snapshot-${{ inputs.env }}-${{ inputs.tenant }}
+          path: metrics.txt
       - name: Announce
         run: |
           echo "Tenant ${{ inputs.tenant }} onboarded to ${{ inputs.env }}"
           # curl -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' --data '{"text":"Tenant onboarded"}'
-

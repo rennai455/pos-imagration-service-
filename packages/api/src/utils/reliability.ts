@@ -26,7 +26,12 @@ export async function retry<T>(
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       return await fn();
-    } catch (error) {
+    } catch (error: any) {
+      // Do not retry on permanent 4xx (except 429)
+      const status = error?.status ?? error?.statusCode;
+      if (typeof status === 'number' && status >= 400 && status < 500 && status !== 429) {
+        throw error;
+      }
       lastError = error as Error;
 
       if (attempt === attempts) {

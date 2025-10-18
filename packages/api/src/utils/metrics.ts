@@ -1,13 +1,17 @@
 import client from "prom-client";
 
-// Create a registry for metrics
-export const register = new client.Registry();
+// Global registry/singleton guards to avoid double-registration in dev/HMR
+const g: any = globalThis as any;
+export const register: client.Registry = g.__codexRegistry || new client.Registry();
+if (!g.__codexRegistry) {
+  g.__codexRegistry = register;
+}
 
-// Clear all existing metrics before registering new ones
-register.clear();
-
-// Collect default metrics (memory, CPU, etc.)
-client.collectDefaultMetrics({ register });
+if (!g.__codexRegistryInitialized) {
+  register.clear();
+  client.collectDefaultMetrics({ register });
+  g.__codexRegistryInitialized = true;
+}
 
 // Custom metrics for API
 export const httpRequestDuration = new client.Histogram({
@@ -60,13 +64,16 @@ register.registerMetric(backgroundJobsTotal);
 register.registerMetric(syncOperationsTotal);
 
 // Build info (gauge=1 with version label)
-export const buildInfo = new client.Gauge({
+export const buildInfo = g.__codexBuildInfo || new client.Gauge({
   name: 'build_info',
   help: 'Build information (static label version)',
   labelNames: ['version'],
   registers: [register]
 });
-buildInfo.set({ version: process.env.npm_package_version || 'unknown' }, 1);
+if (!g.__codexBuildInfo) {
+  buildInfo.set({ version: process.env.npm_package_version || 'unknown' }, 1);
+  g.__codexBuildInfo = buildInfo;
+}
 
 // Ingest latency histogram (seconds)
 export const ingestLatencySeconds = new client.Histogram({

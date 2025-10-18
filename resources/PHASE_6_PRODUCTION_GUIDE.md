@@ -57,3 +57,25 @@ Concise operational guidance to run, observe, scale, and recover the platform in
 - Validation Tag: v0.2.0
 
 Validated at v0.2.0
+
+---
+
+## Appendix — Idempotency Migration & Probes
+
+Idempotency migration apply/rollback:
+
+```bash
+# Create migration and apply (dev/staging)
+pnpm --filter @codex/api prisma migrate dev -n add_idempotency_keys
+
+# Apply in CI/CD (production)
+pnpm --filter @codex/api prisma migrate deploy
+
+# Rollback (if needed): checkout previous revision and migrate deploy
+# Ensure application writes to idempotency_keys and treats unique violation as 200/204
+```
+
+/livez vs /startupz:
+
+- `/livez` indicates the process is up and responding; it does not check downstreams.
+- `/startupz` checks DB readiness and returns 503 on failure; preferred for readiness gates at the platform level.

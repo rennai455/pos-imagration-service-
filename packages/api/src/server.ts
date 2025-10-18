@@ -9,6 +9,7 @@ import { configureHealthPlugin } from "./plugins/health";
 import configureSwagger from "./plugins/swagger";
 import productRoutes from "./routes/products";
 import authRoutes from "./routes/auth";
+import ingestRoutes from "./routes/ingest";
 import { rateLimitMiddleware, idempotencyMiddleware } from './utils/middleware';
 import { httpRequestDuration, activeConnections } from './utils/metrics';
 
@@ -17,6 +18,8 @@ const createServer = (): FastifyInstance =>
     requestTimeout: Number(process.env.REQUEST_TIMEOUT_MS || 0) || undefined,
     connectionTimeout: Number(process.env.CONNECTION_TIMEOUT_MS || 0) || undefined,
     logger: {
+      // Defensive redaction for common PII-bearing headers
+      redact: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
       transport:
         process.env.NODE_ENV === "development"
           ? {
@@ -106,7 +109,7 @@ export const buildServer = async (): Promise<FastifyInstance> => {
     const startTimeKey = Symbol.for('request.startTime');
     const startTime = (request as any)[startTimeKey];
     const duration = startTime ? process.hrtime(startTime)[0] + process.hrtime(startTime)[1] / 1e9 : 0;
-    const route = request.routeOptions?.url || request.url;
+    const route = request.routeOptions?.url || (request as any).routerPath || 'unknown';
     
     httpRequestDuration
       .labels({
@@ -190,6 +193,7 @@ export const buildServer = async (): Promise<FastifyInstance> => {
   await server.register(productRoutes, { prefix: "/api/products" });
   await server.register(authRoutes, { prefix: "/api/auth" });
   await server.register(require('./routes/index').default, { prefix: '/api' });
+  await server.register(ingestRoutes, { prefix: '/pos' });
 
   return server;
 };
@@ -211,14 +215,21 @@ const start = async () => {
   // Graceful shutdown handling
   const signals = ['SIGTERM', 'SIGINT'];
   
+  let shuttingDown = false;
   signals.forEach(signal => {
     process.on(signal, async () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
       server.log.info(`Received ${signal}, starting graceful shutdown`);
       
       try {
         // Emit current metrics snapshot (useful for push-based collectors)
         try { await register.metrics(); } catch {}
-        await server.close();
+        const graceMs = Number(process.env.SHUTDOWN_GRACE_MS || '15000');
+        await Promise.race([
+          server.close(),
+          new Promise((resolve) => setTimeout(resolve, graceMs))
+        ]);
         server.log.info('Server closed successfully');
         process.exit(0);
       } catch (err) {
