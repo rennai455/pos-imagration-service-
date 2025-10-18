@@ -1,19 +1,16 @@
 import "dotenv/config";
-import Fastify, { FastifyInstance } from "fastify";
+import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from './lib/db';
-import { register } from 'prom-client';
-import fastifyCors from '@fastify/cors';
 import { validateEnv } from './utils/env';
+import { register } from 'prom-client';
 
 import { configureSecurityPlugin } from "./plugins/security";
 import { configureHealthPlugin } from "./plugins/health";
 import configureSwagger from "./plugins/swagger";
-import authRoutes from "./routes/auth";
 import productRoutes from "./routes/products";
-import { activeConnections } from './utils/metrics';
+import authRoutes from "./routes/auth";
 import { rateLimitMiddleware, idempotencyMiddleware } from './utils/middleware';
-import { httpRequestDuration } from './utils/metrics';
-import { log } from './utils/logger';
+import { httpRequestDuration, activeConnections } from './utils/metrics';
 
 const createServer = (): FastifyInstance =>
   Fastify({
@@ -37,6 +34,8 @@ export const buildServer = async (): Promise<FastifyInstance> => {
   
   const server = createServer();
 
+  // Error handling is centralized later in this file
+
   let isDbConnected = false
 
   // Only try database connection in production
@@ -58,6 +57,9 @@ export const buildServer = async (): Promise<FastifyInstance> => {
     await prisma.$disconnect();
   });
 
+  // Configure metrics first (at root level)
+  await server.register(require('./plugins/metrics').default);
+
   // Configure security features
   await configureSecurityPlugin(server, {
     trustProxy: process.env.TRUST_PROXY === 'true',
@@ -66,25 +68,31 @@ export const buildServer = async (): Promise<FastifyInstance> => {
     rateLimitTimeWindow: parseInt(process.env.RATE_LIMIT_WINDOW || '60000')
   });
 
-  // Configure health monitoring
-  await configureHealthPlugin(server, {
-    db: prisma,
-    readinessTimeout: parseInt(process.env.READINESS_TIMEOUT || '5000'),
-    livenessTimeout: parseInt(process.env.LIVENESS_TIMEOUT || '2000')
-  });
+  // Configure health monitoring (with /api prefix)
+  await server.register(async (instance) => {
+    await configureHealthPlugin(instance, {
+      db: prisma,
+      readinessTimeout: parseInt(process.env.READINESS_TIMEOUT || '5000'),
+      livenessTimeout: parseInt(process.env.LIVENESS_TIMEOUT || '2000')
+    });
+  }, { prefix: '/api/health' });
 
   // Configure Swagger documentation
   await configureSwagger(server);
 
-  // Rate limiting
-  server.addHook('preValidation', async (request, reply) => {
-    await rateLimitMiddleware(request, reply);
-  });
+
 
   // Idempotency
   server.addHook('preValidation', async (request, reply) => {
     await idempotencyMiddleware(request, reply);
   });
+
+  // Test route for rate limiting tests
+  if (process.env.NODE_ENV === 'test') {
+    server.get('/test', async (request, reply) => {
+      return { status: 'ok' };
+    });
+  }
 
   // Metrics collection
   server.addHook('onResponse', async (request, reply) => {
@@ -103,40 +111,37 @@ export const buildServer = async (): Promise<FastifyInstance> => {
       .observe(duration);
   });
 
-  server.setErrorHandler((err, req, reply) => {
-    server.log.error(err);
-    reply.code(500).send({ error: "Internal Server Error" });
+  // Keep a single, comprehensive error handler
+  // Preserve 429 responses from rate limiting and fall back appropriately
+  server.setErrorHandler((error, request, reply) => {
+    // Log the error for observability
+    server.log.error(error);
+
+    if (
+      (error as any).statusCode === 429 ||
+      (error as any).name === 'TooManyRequestsError' ||
+      (typeof (error as any).message === 'string' && (error as any).message.toLowerCase().includes('rate limit'))
+    ) {
+      reply.status(429).send({
+        error: 'Too Many Requests',
+        message: (error as any).message || 'Rate limit exceeded. Please try again later.',
+        statusCode: 429,
+      });
+      return;
+    }
+
+    const statusCode = (error as any).statusCode || 500;
+    reply.status(statusCode).send({
+      error: (error as any).name || 'Internal Server Error',
+      message: (error as any).message || 'Internal Server Error',
+      statusCode,
+    });
   });
 
-  await server.register(fastifyCors, {
-    origin: process.env.NODE_ENV === 'development' ? true : 
-           process.env.CORS_ORIGIN?.split(',') || false,
-    credentials: true,
-  });
-
+  // Register routes with their prefixes
   await server.register(productRoutes, { prefix: "/api/products" });
   await server.register(authRoutes, { prefix: "/api/auth" });
-
-  // Health check endpoint
-  server.get("/healthz", async () => {
-    const dbStatus = await checkDatabaseHealth();
-    const uptime = process.uptime();
-    
-    return {
-      status: "ok",
-      timestamp: new Date().toISOString(),
-      uptime: Math.floor(uptime),
-      version: process.env.npm_package_version || "unknown",
-      database: dbStatus ? "connected" : "disconnected"
-    };
-  });
-
-  // Metrics are handled by the health plugin
-
-  server.get("/", async () => ({ 
-    status: "Codex API running",
-    version: process.env.npm_package_version || "unknown"
-  }));
+  await server.register(require('./routes/index').default, { prefix: '/api' });
 
   return server;
 };
