@@ -1,19 +1,18 @@
-#!/usr/bin/env pwsh
 # Test migration creation and validation
 # Run this AFTER starting Docker Desktop
 
-Write-Host "🔍 Testing Idempotency Migration..." -ForegroundColor Cyan
+Write-Host "Testing Idempotency Migration..." -ForegroundColor Cyan
 
 # Check if Docker is running
-Write-Host "`n1️⃣ Checking Docker..." -ForegroundColor Yellow
+Write-Host "`n1. Checking Docker..." -ForegroundColor Yellow
 $dockerRunning = $false
 try {
     docker ps | Out-Null
     $dockerRunning = $true
-    Write-Host "   ✅ Docker is running" -ForegroundColor Green
+    Write-Host "   [OK] Docker is running" -ForegroundColor Green
 } catch {
-    Write-Host "   ❌ Docker is NOT running" -ForegroundColor Red
-    Write-Host "`n   📋 TODO: Start Docker Desktop manually" -ForegroundColor Yellow
+    Write-Host "   [ERROR] Docker is NOT running" -ForegroundColor Red
+    Write-Host "`n   TODO: Start Docker Desktop manually" -ForegroundColor Yellow
     Write-Host "   Then run: docker-compose up -d" -ForegroundColor Yellow
     exit 1
 }
