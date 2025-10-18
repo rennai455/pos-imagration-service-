@@ -111,6 +111,15 @@ export const buildServer = async (): Promise<FastifyInstance> => {
       .observe(duration);
   });
 
+  // Lightweight root health endpoint used by deployment smoke tests
+  server.get('/healthz', async (_req, reply) => {
+    reply.send({
+      status: 'ok',
+      version: process.env.npm_package_version || 'unknown',
+      uptime: process.uptime(),
+    });
+  });
+
   // Keep a single, comprehensive error handler
   // Preserve 429 responses from rate limiting and fall back appropriately
   server.setErrorHandler((error, request, reply) => {
