@@ -64,6 +64,14 @@ jobs:
           # flyctl deploy --image ghcr.io/${{ github.repository }}@${{ needs.build.outputs.image-digest }} --app myapp-staging
           # gcloud run deploy myapp-staging --image ghcr.io/${{ github.repository }}@${{ needs.build.outputs.image-digest }} --region us-central1
       - uses: actions/checkout@v4
+      - name: Health gate (wait for /livez)
+        run: |
+          set -e
+          for i in $(seq 1 30); do
+            if curl -sf "${{ vars.STAGING_URL }}/livez" > /dev/null; then echo "livez OK"; break; fi
+            sleep 2
+            if [ "$i" -eq 30 ]; then echo "livez did not become healthy"; exit 1; fi
+          done
       - name: Smoke Gate
         run: |
           chmod +x scripts/smoke.sh
@@ -108,4 +116,3 @@ jobs:
         run: |
           chmod +x scripts/smoke.sh
           API_URL="${{ vars.PRODUCTION_URL }}" WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}" ./scripts/smoke.sh
-

@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { register } from 'prom-client';
+import { register } from '../utils/metrics';
 
 export default async function configureMetrics(fastify: FastifyInstance): Promise<void> {
   fastify.get('/metrics', async (_request: FastifyRequest, reply: FastifyReply) => {

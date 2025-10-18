@@ -3,7 +3,8 @@ export interface RetryOptions {
   attempts?: number;
   baseDelay?: number;
   maxDelay?: number;
-  jitter?: boolean;
+  jitter?: boolean; // retained for compatibility
+  labels?: { tenant?: string; service?: string };
 }
 
 export async function retry<T>(
@@ -15,9 +16,12 @@ export async function retry<T>(
     baseDelay = 250,
     maxDelay = 5000,
     jitter = true,
+    labels,
   } = options;
 
   let lastError: Error;
+  // Decorrelated jitter base, see https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+  let sleepMs = baseDelay;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
@@ -29,20 +33,25 @@ export async function retry<T>(
         throw lastError;
       }
 
-      // Calculate delay with exponential backoff
-      let delay = Math.min(
-        baseDelay * Math.pow(2, attempt - 1),
-        maxDelay
-      );
-
-      // Add jitter to prevent thundering herd
+      // Decorrelated jitter: sleep = min(maxDelay, random(baseDelay, sleepMs * 3))
+      let delay = baseDelay;
       if (jitter) {
-        delay = delay * (0.5 + Math.random() * 0.5);
+        const upper = Math.max(baseDelay, Math.min(maxDelay, sleepMs * 3));
+        const lower = baseDelay;
+        delay = Math.floor(lower + Math.random() * (upper - lower));
+      } else {
+        delay = Math.min(maxDelay, sleepMs * 2);
       }
+      sleepMs = delay;
 
       console.log(
         `Retry attempt ${attempt}/${attempts} failed: ${lastError.message}. Retrying in ${Math.round(delay)}ms`
       );
+
+      try {
+        const { retryAttemptsTotal } = await import('./metrics');
+        retryAttemptsTotal.inc({ tenant: labels?.tenant || 'unknown', service: labels?.service || 'generic' });
+      } catch {}
 
       await sleep(delay);
     }

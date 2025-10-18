@@ -1,0 +1,42 @@
+name: Pilot Onboard
+
+on:
+  workflow_dispatch:
+    inputs:
+      tenant:
+        description: 'Tenant identifier'
+        required: true
+      env:
+        description: 'Environment (staging|production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  onboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve environment URL
+        id: env
+        run: |
+          if [ "${{ inputs.env }}" = "production" ]; then echo "url=${{ vars.PRODUCTION_URL }}" >> $GITHUB_OUTPUT; else echo "url=${{ vars.STAGING_URL }}" >> $GITHUB_OUTPUT; fi
+      - name: Deploy + seed (provider TBD)
+        run: |
+          echo "Onboarding tenant=${{ inputs.tenant }} env=${{ inputs.env }} to ${{ steps.env.outputs.url }}"
+          # codex deploy --tenant "${{ inputs.tenant }}" --env "${{ inputs.env }}"
+          # flyctl deploy ...
+          # gcloud run deploy ...
+          # pnpm ts-node scripts/seed-tenant.ts --tenant "${{ inputs.tenant }}"
+      - name: Smoke test
+        run: |
+          chmod +x scripts/smoke.sh
+          API_URL="${{ steps.env.outputs.url }}" WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}" ./scripts/smoke.sh
+      - name: Announce
+        run: |
+          echo "Tenant ${{ inputs.tenant }} onboarded to ${{ inputs.env }}"
+          # curl -X POST "$SLACK_WEBHOOK_URL" -H 'Content-type: application/json' --data '{"text":"Tenant onboarded"}'
+

@@ -168,4 +168,4 @@ gh workflow run rollback.yml -f environment=production -f image_digest=sha256:YO
 
 ---
 
-Validated at v0.1.0
+Validated at v0.2.0

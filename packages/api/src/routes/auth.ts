@@ -17,10 +17,12 @@ export default async function (server: FastifyInstance) {
       return reply.code(400).send({ error: "Email and password are required" });
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Sign in with retry using decorrelated jitter
+    const { retry } = await import('../utils/reliability');
+    const { data, error } = await retry(
+      () => supabase.auth.signInWithPassword({ email, password }),
+      { attempts: 3, baseDelay: 300, maxDelay: 2000, jitter: true, labels: { service: 'supabase', tenant: 'unknown' } }
+    );
 
     if (error) {
       return reply.code(401).send({ error: error.message });

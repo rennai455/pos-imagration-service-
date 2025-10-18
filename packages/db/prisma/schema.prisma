@@ -7,10 +7,23 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Store {
-  id        String   @id @default(cuid())
+/// Represents a tenant in the multi-tenant system
+model Tenant {
+  id        String   @id @default(uuid())
   name      String
+  stores    Store[]
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  @@map("tenants")
+}
+
+model Store {
+  id        String    @id @default(cuid())
+  name      String
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  createdAt DateTime  @default(now())
   products  Product[]
   users     User[]
 }
@@ -21,6 +34,7 @@ model Product {
   description String?
   price       Float
   stock       Int
+  sku         String?
   barcode     String?
   storeId     String
   store       Store    @relation(fields: [storeId], references: [id])
@@ -34,4 +48,15 @@ model User {
   storeId   String
   store     Store    @relation(fields: [storeId], references: [id])
   createdAt DateTime @default(now())
+}
+
+/// Idempotency key registry to enforce (tenantId, key) uniqueness
+model Idempotency {
+  id        String   @id @default(cuid())
+  tenantId  String
+  key       String
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, key])
+  @@map("idempotency_keys")
 }

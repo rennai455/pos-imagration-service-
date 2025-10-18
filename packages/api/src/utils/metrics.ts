@@ -59,6 +59,36 @@ register.registerMetric(activeConnections);
 register.registerMetric(backgroundJobsTotal);
 register.registerMetric(syncOperationsTotal);
 
+// Build info (gauge=1 with version label)
+export const buildInfo = new client.Gauge({
+  name: 'build_info',
+  help: 'Build information (static label version)',
+  labelNames: ['version'],
+  registers: [register]
+});
+buildInfo.set({ version: process.env.npm_package_version || 'unknown' }, 1);
+
+// Ingest latency histogram (seconds)
+export const ingestLatencySeconds = new client.Histogram({
+  name: 'ingest_latency_seconds',
+  help: 'Latency of ingest operations in seconds',
+  labelNames: ['tenant_id', 'source'],
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+  registers: [register]
+});
+
+// Retry attempts counter
+export const retryAttemptsTotal = new client.Counter({
+  name: 'retry_attempts_total',
+  help: 'Total number of retry attempts',
+  labelNames: ['tenant', 'service'],
+  registers: [register]
+});
+
+register.registerMetric(buildInfo);
+register.registerMetric(ingestLatencySeconds);
+register.registerMetric(retryAttemptsTotal);
+
 // Helper functions for recording metrics
 export function recordHttpRequest(
   method: string,

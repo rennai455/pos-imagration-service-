@@ -14,6 +14,8 @@ import { httpRequestDuration, activeConnections } from './utils/metrics';
 
 const createServer = (): FastifyInstance =>
   Fastify({
+    requestTimeout: Number(process.env.REQUEST_TIMEOUT_MS || 0) || undefined,
+    connectionTimeout: Number(process.env.CONNECTION_TIMEOUT_MS || 0) || undefined,
     logger: {
       transport:
         process.env.NODE_ENV === "development"
@@ -87,6 +89,11 @@ export const buildServer = async (): Promise<FastifyInstance> => {
     await idempotencyMiddleware(request, reply);
   });
 
+  // Track in-flight requests to aid graceful shutdown
+  let activeRequests = 0;
+  server.addHook('onRequest', async () => { activeRequests++; });
+  server.addHook('onResponse', async () => { activeRequests = Math.max(0, activeRequests - 1); });
+
   // Test route for rate limiting tests
   if (process.env.NODE_ENV === 'test') {
     server.get('/test', async (request, reply) => {
@@ -109,6 +116,19 @@ export const buildServer = async (): Promise<FastifyInstance> => {
         tenant_id: (request as any).tenantId || 'default'
       })
       .observe(duration);
+
+    // Structured log for quick correlation
+    try {
+      const latencyMs = Math.round(duration * 1000);
+      server.log.info({
+        rid: (request as any).id || (request as any).req?.id,
+        tenantId: (request as any).tenantId || 'default',
+        version: process.env.npm_package_version || 'unknown',
+        path: route,
+        latency_ms: latencyMs,
+        status: reply.statusCode,
+      });
+    } catch {}
   });
 
   // Lightweight root health endpoint used by deployment smoke tests
@@ -118,6 +138,25 @@ export const buildServer = async (): Promise<FastifyInstance> => {
       version: process.env.npm_package_version || 'unknown',
       uptime: process.uptime(),
     });
+  });
+
+  // Liveness and startup probes
+  server.get('/livez', async (_req, reply) => {
+    reply.send({ status: 'ok' });
+  });
+
+  server.get('/startupz', async (_req, reply) => {
+    const result: any = { status: 'ok', checks: {} };
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      result.checks.db = 'ok';
+    } catch (e) {
+      result.checks.db = 'fail';
+      result.status = 'fail';
+    }
+    result.checks.supabase = process.env.SUPABASE_URL ? 'present' : 'missing';
+    if (result.status !== 'ok') reply.code(503);
+    reply.send(result);
   });
 
   // Keep a single, comprehensive error handler
@@ -177,6 +216,8 @@ const start = async () => {
       server.log.info(`Received ${signal}, starting graceful shutdown`);
       
       try {
+        // Emit current metrics snapshot (useful for push-based collectors)
+        try { await register.metrics(); } catch {}
         await server.close();
         server.log.info('Server closed successfully');
         process.exit(0);
