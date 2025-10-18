@@ -48,23 +48,17 @@ export async function rateLimitMiddleware(
   const tenantId = (request as any).tenantId || 'anonymous';
   const key = `${tenantId}:${request.ip}`;
 
-  if (!rateLimiter.isAllowed(key)) {
-    const remaining = rateLimiter.getRemainingRequests(key);
-    
-    reply.header('X-RateLimit-Limit', process.env.RATE_LIMIT_MAX || "100");
-    reply.header('X-RateLimit-Remaining', remaining.toString());
-    reply.header('Retry-After', '900'); // 15 minutes in seconds
-    
-    return reply.code(429).send({
-      error: 'Too Many Requests',
-      message: 'Rate limit exceeded. Please try again later.',
-    });
-  }
-
-  // Add rate limit headers to successful responses
+  // Add rate limit headers to both success and error responses
   const remaining = rateLimiter.getRemainingRequests(key);
   reply.header('X-RateLimit-Limit', process.env.RATE_LIMIT_MAX || "100");
   reply.header('X-RateLimit-Remaining', remaining.toString());
+
+  if (!rateLimiter.isAllowed(key)) {
+    reply.header('Retry-After', '900'); // 15 minutes in seconds
+    const error: any = new Error('Rate limit exceeded. Please try again later.');
+    error.statusCode = 429;
+    throw error;
+  }
 }
 
 // Wrapper function for applying idempotency to route handlers
