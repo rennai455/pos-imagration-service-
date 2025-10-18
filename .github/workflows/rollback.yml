@@ -1,0 +1,45 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback (staging|production)'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      image_digest:
+        description: 'Image digest to deploy (e.g., sha256:abcd...)'
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Resolve target URL
+        id: env
+        run: |
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            echo "url=${{ vars.PRODUCTION_URL }}" >> $GITHUB_OUTPUT
+          else
+            echo "url=${{ vars.STAGING_URL }}" >> $GITHUB_OUTPUT
+          fi
+      - name: Redeploy exact digest
+        run: |
+          DIGEST="${{ inputs.image_digest }}"
+          echo "Redeploying ghcr.io/${{ github.repository }}@${DIGEST} to ${{ inputs.environment }}"
+          # flyctl deploy --image ghcr.io/${{ github.repository }}@${DIGEST} --app myapp-${{ inputs.environment }}
+          # gcloud run deploy myapp-${{ inputs.environment }} --image ghcr.io/${{ github.repository }}@${DIGEST} --region us-central1
+      - name: Verify with smoke tests
+        run: |
+          chmod +x scripts/smoke.sh
+          API_URL="${{ steps.env.outputs.url }}" WEBHOOK_SECRET="${{ secrets.WEBHOOK_SECRET }}" ./scripts/smoke.sh
+
