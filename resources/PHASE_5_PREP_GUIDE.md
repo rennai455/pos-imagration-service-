@@ -89,9 +89,9 @@ This guide turns a verified system into a pilot-ready platform with safe, observ
 ### Step 7 — Runbooks & Disaster Recovery
 **Purpose:** Make recovery mechanical, not heroic.
 **Actions:**
-- `infra/runbooks/deploy.md`: exact deploy + verification steps.
-- `infra/runbooks/rollback.md`: redeploy pinned digest (via `rollback.yml`).
-- `infra/runbooks/oncall.md`: playbooks for latency spike, 5xx burst, webhook flood.
+- [`infra/runbooks/deploy.md`](../infra/runbooks/deploy.md): exact deploy + verification steps.
+- [`infra/runbooks/rollback.md`](../infra/runbooks/rollback.md): redeploy pinned digest (via `rollback.yml`).
+- [`infra/runbooks/oncall.md`](../infra/runbooks/oncall.md): playbooks for latency spike, 5xx burst, webhook flood.
 - Test rollback on staging (recover `/healthz` in < 60s).
 **✅ Output:** Usable docs + proven rollback path.
 
@@ -165,3 +165,7 @@ gh workflow run rollback.yml -f environment=production -f image_digest=sha256:YO
 # flyctl deploy --image ghcr.io/ORG/REPO@sha256:YOUR_OLD_DIGEST --config infra/app/fly.prod.toml
 # gcloud run deploy api --image=ghcr.io/ORG/REPO@sha256:YOUR_OLD_DIGEST --region=$GCLOUD_REGION
 ```
+
+---
+
+Validated at v0.1.0
