@@ -1,0 +1,36 @@
+# Environments
+name: CD-Environments
+
+on: workflow_dispatch
+
+jobs:
+  setup-environments:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      environments: write
+    steps:
+      - name: Create staging environment
+        uses: octokit/request-action@v2.x
+        with:
+          route: POST /repos/{owner}/{repo}/environments
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.repository.name }}
+          environment_name: staging
+          wait_timer: 0
+          reviewers: []
+          deployment_branch_policy: null
+
+      - name: Create production environment
+        uses: octokit/request-action@v2.x
+        with:
+          route: POST /repos/{owner}/{repo}/environments
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.repository.name }}
+          environment_name: production
+          wait_timer: 30
+          reviewers: ["${{ github.repository_owner }}"]
+          deployment_branch_policy:
+            protected_branches: true
+            custom_branch_policies: false

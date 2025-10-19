@@ -1,0 +1,51 @@
+# Codex Retail OS - Code Ownership
+
+# Global owners - these users will be requested for review on all PRs
+* @rennai455
+
+# API Package
+packages/api/ @rennai455
+packages/api/src/routes/ @rennai455
+packages/api/src/utils/ @rennai455
+
+# Database Package
+packages/db/ @rennai455
+packages/db/prisma/ @rennai455
+
+# Admin Application
+apps/admin/ @rennai455
+
+# Mobile SDK Application  
+apps/sdk/ @rennai455
+
+# UI Components Package
+packages/ui/ @rennai455
+
+# Infrastructure & Deployment
+infra/ @rennai455
+.github/workflows/ @rennai455
+Dockerfile @rennai455
+docker-compose.yml @rennai455
+
+# Documentation
+README.md @rennai455
+docs/ @rennai455
+resources/ @rennai455
+
+# Configuration Files
+package.json @rennai455
+pnpm-workspace.yaml @rennai455
+tsconfig*.json @rennai455
+.eslintrc* @rennai455
+.gitignore @rennai455
+
+# Security-sensitive files
+.env* @rennai455
+infra/app/environments/ @rennai455
+
+# Add additional owners as team grows:
+# packages/api/ @dallas @platform-team
+# apps/admin/ @frontend-team
+# apps/sdk/ @mobile-team
+# packages/db/ @backend-team @database-team
+# infra/ @devops-team @platform-team

@@ -62,6 +62,9 @@ importers:
       '@codex/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@supabase/supabase-js':
+        specifier: ^2.75.1
+        version: 2.75.1
       next:
         specifier: 14.1.0
         version: 14.1.0(react-dom@18.2.0)(react@18.2.0)
@@ -260,8 +263,8 @@ importers:
         version: 18.2.0
     devDependencies:
       '@types/react':
-        specifier: ^18.2.45
-        version: 18.2.45
+        specifier: ^18.3.26
+        version: 18.3.26
       typescript:
         specifier: ^5.3.3
         version: 5.3.3
@@ -4232,7 +4235,7 @@ packages:
     dependencies:
       invariant: 2.2.4
       nullthrows: 1.1.1
-      react-native: 0.73.4(@babel/core@7.23.7)(@babel/preset-env@7.28.3)(react@19.2.0)
+      react-native: 0.73.4(@babel/core@7.23.7)(@babel/preset-env@7.28.3)(react@18.2.0)
     dev: false
 
   /@react-navigation/bottom-tabs@6.5.20(@react-navigation/native@6.1.18)(react-native-safe-area-context@5.6.1)(react-native-screens@4.17.1)(react-native@0.73.4)(react@18.2.0):
@@ -4604,8 +4607,20 @@ packages:
       '@supabase/node-fetch': 2.6.15
     dev: false
 
+  /@supabase/auth-js@2.75.1:
+    resolution: {integrity: sha512-zktlxtXstQuVys/egDpVsargD9hQtG20CMdtn+mMn7d2Ulkzy2tgUT5FUtpppvCJtd9CkhPHO/73rvi5W6Am5A==}
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+    dev: false
+
   /@supabase/functions-js@2.75.0:
     resolution: {integrity: sha512-18yk07Moj/xtQ28zkqswxDavXC3vbOwt1hDuYM3/7xPnwwpKnsmPyZ7bQ5th4uqiJzQ135t74La9tuaxBR6e7w==}
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+    dev: false
+
+  /@supabase/functions-js@2.75.1:
+    resolution: {integrity: sha512-xO+01SUcwVmmo67J7Htxq8FmhkYLFdWkxfR/taxBOI36wACEUNQZmroXGPl4PkpYxBO7TaDsRHYGxUpv9zTKkg==}
     dependencies:
       '@supabase/node-fetch': 2.6.15
     dev: false
@@ -4623,8 +4638,26 @@ packages:
       '@supabase/node-fetch': 2.6.15
     dev: false
 
+  /@supabase/postgrest-js@2.75.1:
+    resolution: {integrity: sha512-FiYBD0MaKqGW8eo4Xqu7/100Xm3ddgh+3qHtqS18yQRoglJTFRQCJzY1xkrGS0JFHE2YnbjL6XCiOBXiG8DK4Q==}
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+    dev: false
+
   /@supabase/realtime-js@2.75.0:
     resolution: {integrity: sha512-B4Xxsf2NHd5cEnM6MGswOSPSsZKljkYXpvzKKmNxoUmNQOfB7D8HOa6NwHcUBSlxcjV+vIrYKcYXtavGJqeGrw==}
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+      '@types/phoenix': 1.6.6
+      '@types/ws': 8.18.1
+      ws: 8.18.3
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+    dev: false
+
+  /@supabase/realtime-js@2.75.1:
+    resolution: {integrity: sha512-lBIJ855bUsBFScHA/AY+lxIFkubduUvmwbagbP1hq0wDBNAsYdg3ql80w8YmtXCDjkCwlE96SZqcFn7BGKKJKQ==}
     dependencies:
       '@supabase/node-fetch': 2.6.15
       '@types/phoenix': 1.6.6
@@ -4641,6 +4674,12 @@ packages:
       '@supabase/node-fetch': 2.6.15
     dev: false
 
+  /@supabase/storage-js@2.75.1:
+    resolution: {integrity: sha512-WdGEhroflt5O398Yg3dpf1uKZZ6N3CGloY9iGsdT873uWbkQKoP0wG8mtx98dh0fhj6dAlzBqOAvnlV12cJfzA==}
+    dependencies:
+      '@supabase/node-fetch': 2.6.15
+    dev: false
+
   /@supabase/supabase-js@2.75.0:
     resolution: {integrity: sha512-8UN/vATSgS2JFuJlMVr51L3eUDz+j1m7Ww63wlvHLKULzCDaVWYzvacCjBTLW/lX/vedI2LBI4Vg+01G9ufsJQ==}
     dependencies:
@@ -4650,6 +4689,20 @@ packages:
       '@supabase/postgrest-js': 2.75.0
       '@supabase/realtime-js': 2.75.0
       '@supabase/storage-js': 2.75.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+    dev: false
+
+  /@supabase/supabase-js@2.75.1:
+    resolution: {integrity: sha512-GEPVBvjQimcMd9z5K1eTKTixTRb6oVbudoLQ9JKqTUJnR6GQdBU4OifFZean1AnHfsQwtri1fop2OWwsMv019w==}
+    dependencies:
+      '@supabase/auth-js': 2.75.1
+      '@supabase/functions-js': 2.75.1
+      '@supabase/node-fetch': 2.6.15
+      '@supabase/postgrest-js': 2.75.1
+      '@supabase/realtime-js': 2.75.1
+      '@supabase/storage-js': 2.75.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -4826,6 +4879,13 @@ packages:
     dependencies:
       '@types/prop-types': 15.7.15
       '@types/scheduler': 0.26.0
+      csstype: 3.1.3
+    dev: true
+
+  /@types/react@18.3.26:
+    resolution: {integrity: sha512-RFA/bURkcKzx/X9oumPG9Vp3D3JUgus/d0b67KB0t5S/raciymilkOa66olh78MUI92QLbEJevO7rvqU/kjwKA==}
+    dependencies:
+      '@types/prop-types': 15.7.15
       csstype: 3.1.3
     dev: true
 
@@ -7920,7 +7980,7 @@ packages:
       expo: '*'
     dependencies:
       '@expo/config': 8.5.4
-      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@19.2.0)
+      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@18.2.0)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -7944,7 +8004,7 @@ packages:
     peerDependencies:
       expo: '*'
     dependencies:
-      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@19.2.0)
+      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@18.2.0)
     dev: false
 
   /expo-font@11.10.3(expo@50.0.5):
@@ -7952,7 +8012,7 @@ packages:
     peerDependencies:
       expo: '*'
     dependencies:
-      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@19.2.0)
+      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@18.2.0)
       fontfaceobserver: 2.3.0
     dev: false
 
@@ -7969,7 +8029,7 @@ packages:
     peerDependencies:
       expo: '*'
     dependencies:
-      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@19.2.0)
+      expo: 50.0.5(@babel/core@7.23.7)(@react-native/babel-preset@0.82.0)(react-native@0.73.4)(react@18.2.0)
     dev: false
 
   /expo-linking@8.0.8(expo@50.0.5)(react-native@0.73.4)(react@18.2.0):

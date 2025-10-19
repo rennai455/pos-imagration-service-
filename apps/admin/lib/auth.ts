@@ -26,7 +26,7 @@ export function logout() {
 }
 
 export function watchSession() {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
     if (!session) {
       localStorage.removeItem("token");
       window.location.href = "/login";

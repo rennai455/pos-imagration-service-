@@ -1,0 +1,57 @@
+name = "pos-integration-staging"
+type = "container"
+
+[build]
+  dockerfile = "Dockerfile"
+  target = "production"
+
+[deploy]
+  strategy = "rolling"
+  healthcheck = {
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    retries = 3
+  }
+  min_instances = 2
+  max_instances = 4
+
+[env]
+  NODE_ENV = "staging"
+  HOST = "0.0.0.0"
+  PORT = "3000"
+
+[experimental]
+  auto_rollback = true
+
+[[services]]
+  internal_port = 3000
+  protocol = "tcp"
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.http_checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+
+[metrics]
+  port = 9090
+  path = "/metrics"
+
+[[vm]]
+  memory = "512MB"
+  cpu_kind = "shared"
+  cpus = 1
