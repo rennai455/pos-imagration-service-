@@ -83,27 +83,32 @@ export async function configureHealthPlugin(
   // Readiness probe (includes DB check)
   fastify.get('/ready', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const timeout = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Database check timeout')), readinessTimeout)
+      // Properly cleanup timeout to avoid memory leaks
+      let timeoutId: NodeJS.Timeout | null = null;
+      const timeout = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Database check timeout')), readinessTimeout)
       })
 
       const dbCheck = db.$queryRaw`SELECT 1`
-      const [result] = await Promise.all([
-        Promise.race([dbCheck, timeout]),
-        new Promise(resolve => setTimeout(resolve, 100)) // Small delay to ensure connection is stable
-      ])
       
-      if (!result) {
-        throw new Error('Database check failed')
+      try {
+        const result = await Promise.race([dbCheck, timeout])
+        
+        if (!result) {
+          throw new Error('Database check failed')
+        }
+        
+        dbConnectionGauge.set(1)
+        
+        reply.send({
+          status: 'ready',
+          database: 'connected',
+          timestamp: new Date().toISOString()
+        })
+      } finally {
+        // Always clear timeout whether success or failure
+        if (timeoutId) clearTimeout(timeoutId);
       }
-      
-      dbConnectionGauge.set(1)
-      
-      reply.send({
-        status: 'ready',
-        database: 'connected',
-        timestamp: new Date().toISOString()
-      })
     } catch (error) {
       dbConnectionGauge.set(0)
       

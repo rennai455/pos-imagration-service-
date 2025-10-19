@@ -1,5 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import { generateIdempotencyKey, withIdempotency, RateLimiter } from "./reliability";
+import { prisma } from "../lib/db";
+import { ingestDedupTotal } from "./metrics";
 
 // Global rate limiter instance
 const rateLimiter = new RateLimiter(
@@ -37,6 +39,30 @@ export async function idempotencyMiddleware(
 
   // Store the key for later use
   (request as any).idempotencyKey = idempotencyKey;
+  
+  // Enforce idempotency: check database for duplicate
+  const tenantId = (request as any).tenantId || 'default';
+  try {
+    await prisma.idempotency.create({
+      data: {
+        tenantId,
+        key: idempotencyKey,
+      },
+    });
+  } catch (error: any) {
+    // P2002 = Unique constraint violation (duplicate key)
+    if (error.code === 'P2002') {
+      // Increment dedup metric
+      const source = request.url.includes('/pos/') ? 'ingest' : 'api';
+      ingestDedupTotal.inc({ tenant: tenantId, source });
+      
+      // Return 204 No Content for idempotent replay
+      reply.code(204).send();
+      return;
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 // Rate limiting middleware

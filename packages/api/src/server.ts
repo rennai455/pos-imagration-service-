@@ -93,9 +93,16 @@ export const buildServer = async (): Promise<FastifyInstance> => {
   });
 
   // Track in-flight requests to aid graceful shutdown
+  // CRITICAL: These must be synchronous to avoid race conditions
   let activeRequests = 0;
-  server.addHook('onRequest', async () => { activeRequests++; });
-  server.addHook('onResponse', async () => { activeRequests = Math.max(0, activeRequests - 1); });
+  server.addHook('onRequest', (request, reply, done) => { 
+    activeRequests++; 
+    done();
+  });
+  server.addHook('onResponse', (request, reply, done) => { 
+    activeRequests = Math.max(0, activeRequests - 1);
+    done();
+  });
 
   // Test route for rate limiting tests
   if (process.env.NODE_ENV === 'test') {
@@ -143,22 +150,37 @@ export const buildServer = async (): Promise<FastifyInstance> => {
     });
   });
 
-  // Liveness and startup probes
+  // Liveness probe - always returns 200 if process is alive
   server.get('/livez', async (_req, reply) => {
     reply.send({ status: 'ok' });
   });
 
+  // Startup probe - used for cold start initialization gates
+  // Returns 200 once initial setup is complete (DB connected, migrations OK)
   server.get('/startupz', async (_req, reply) => {
-    const result: any = { status: 'ok', checks: {} };
+    const result: any = { status: 'ok', checks: {}, phase: 'startup' };
+    
     try {
+      // Check DB connectivity - critical for startup
       await prisma.$queryRaw`SELECT 1`;
-      result.checks.db = 'ok';
+      result.checks.db = 'connected';
     } catch (e) {
-      result.checks.db = 'fail';
+      result.checks.db = 'disconnected';
       result.status = 'fail';
+      reply.code(503);
     }
-    result.checks.supabase = process.env.SUPABASE_URL ? 'present' : 'missing';
-    if (result.status !== 'ok') reply.code(503);
+    
+    // Check required env vars
+    result.checks.supabase = process.env.SUPABASE_URL ? 'configured' : 'missing';
+    result.checks.database_url = process.env.DATABASE_URL ? 'configured' : 'missing';
+    
+    // Add uptime to show cold start progress
+    result.uptime = process.uptime();
+    
+    if (result.status !== 'ok') {
+      reply.code(503);
+    }
+    
     reply.send(result);
   });
 
@@ -224,13 +246,24 @@ const start = async () => {
       
       try {
         // Emit current metrics snapshot (useful for push-based collectors)
-        try { await register.metrics(); } catch {}
+        try { 
+          const metrics = await register.metrics();
+          server.log.info({ metricsSize: metrics.length }, 'Metrics snapshot captured');
+        } catch {}
+        
         const graceMs = Number(process.env.SHUTDOWN_GRACE_MS || '15000');
-        await Promise.race([
-          server.close(),
-          new Promise((resolve) => setTimeout(resolve, graceMs))
-        ]);
-        server.log.info('Server closed successfully');
+        const closePromise = server.close().then(() => 'closed');
+        const timeoutPromise = new Promise<string>((resolve) => 
+          setTimeout(() => resolve('timeout'), graceMs)
+        );
+        
+        const result = await Promise.race([closePromise, timeoutPromise]);
+        
+        if (result === 'timeout') {
+          server.log.warn({ graceMs }, 'Graceful shutdown timed out, forcing exit');
+        } else {
+          server.log.info('Server closed successfully');
+        }
         process.exit(0);
       } catch (err) {
         server.log.error(err, 'Error during graceful shutdown');

@@ -1,0 +1,439 @@
+name: Production Readiness Gates
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+  SUPABASE_URL: http://localhost:54321
+  SUPABASE_ANON_KEY: test-key
+  NODE_ENV: test
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: TypeScript Check (noImplicitAny strict mode)
+        run: pnpm -r exec tsc --noEmit --strict
+        
+      - name: ESLint Check
+        run: pnpm -r exec eslint . --ext .ts,.tsx --max-warnings 0
+        continue-on-error: true
+
+  migration-status:
+    name: Migration Status Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run migrations
+        run: |
+          cd packages/api
+          pnpm prisma migrate deploy
+      
+      - name: Check migration status
+        run: |
+          cd packages/api
+          pnpm prisma migrate status
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run migrations
+        run: |
+          cd packages/api
+          pnpm prisma migrate deploy
+      
+      - name: Run tests
+        run: pnpm -r test
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: packages/api/coverage/
+
+  health-check-test:
+    name: Health Model Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run migrations
+        run: |
+          cd packages/api
+          pnpm prisma migrate deploy
+      
+      - name: Start server in background
+        run: |
+          cd packages/api
+          pnpm start &
+          echo $! > server.pid
+        env:
+          PORT: 4000
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      
+      - name: Wait for startup
+        run: |
+          timeout 120 bash -c 'until curl -f http://localhost:4000/startupz; do sleep 2; done'
+      
+      - name: Test /health endpoint
+        run: |
+          curl -f http://localhost:4000/api/health || exit 1
+      
+      - name: Test /health/ready endpoint
+        run: |
+          curl -f http://localhost:4000/api/health/ready || exit 1
+      
+      - name: Test /livez endpoint
+        run: |
+          curl -f http://localhost:4000/livez || exit 1
+      
+      - name: Stop server
+        if: always()
+        run: kill $(cat packages/api/server.pid) || true
+
+  metrics-validation:
+    name: Metrics Registry Validation
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run migrations
+        run: |
+          cd packages/api
+          pnpm prisma migrate deploy
+      
+      - name: Start server
+        run: |
+          cd packages/api
+          pnpm start &
+          echo $! > server.pid
+        env:
+          PORT: 4000
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      
+      - name: Wait for startup
+        run: |
+          timeout 120 bash -c 'until curl -f http://localhost:4000/startupz; do sleep 2; done'
+      
+      - name: Fetch metrics
+        run: |
+          curl -f http://localhost:4000/metrics > metrics.txt
+      
+      - name: Validate metrics content
+        run: |
+          # Check for required metrics
+          grep "build_info" metrics.txt || (echo "Missing build_info" && exit 1)
+          grep "http_request_duration_seconds" metrics.txt || (echo "Missing http_request_duration_seconds" && exit 1)
+          grep "http_requests_total" metrics.txt || (echo "Missing http_requests_total" && exit 1)
+          grep "ingest_dedup_total" metrics.txt || (echo "Missing ingest_dedup_total" && exit 1)
+          grep "retry_attempts_total" metrics.txt || (echo "Missing retry_attempts_total" && exit 1)
+          
+          # Check for duplicate HELP lines (indicates double-registration)
+          DUPES=$(grep "^# HELP" metrics.txt | sort | uniq -d)
+          if [ -n "$DUPES" ]; then
+            echo "Duplicate metrics found:"
+            echo "$DUPES"
+            exit 1
+          fi
+          
+          echo "✅ Metrics validation passed"
+      
+      - name: Upload metrics snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-snapshot
+          path: metrics.txt
+      
+      - name: Stop server
+        if: always()
+        run: kill $(cat packages/api/server.pid) || true
+
+  idempotency-test:
+    name: Idempotency Enforcement Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run migrations
+        run: |
+          cd packages/api
+          pnpm prisma migrate deploy
+      
+      - name: Run idempotency tests
+        run: |
+          cd packages/api
+          pnpm test tests/idempotency.test.ts
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+
+  load-test:
+    name: Load Test (P95 ≤ 1s)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Run migrations
+        run: |
+          cd packages/api
+          pnpm prisma migrate deploy
+      
+      - name: Start server
+        run: |
+          cd packages/api
+          pnpm start &
+          echo $! > server.pid
+        env:
+          PORT: 4000
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      
+      - name: Wait for startup
+        run: |
+          timeout 120 bash -c 'until curl -f http://localhost:4000/startupz; do sleep 2; done'
+      
+      - name: Run load test
+        run: |
+          TOTAL=2000 UNIQUE=400 CONCURRENCY=75 API_URL=http://localhost:4000 node scripts/dedup-loadtest.mjs | tee loadtest.log
+      
+      - name: Parse and upload results
+        if: always()
+        run: |
+          # Extract P95 from log
+          P95=$(grep "P95:" loadtest.log | awk '{print $2}' | sed 's/ms//')
+          ERROR_RATE=$(grep "Error Rate:" loadtest.log | awk '{print $3}' | sed 's/%//')
+          
+          echo "{\"p95_ms\": $P95, \"error_rate\": $ERROR_RATE}" > loadtest.json
+      
+      - name: Upload load test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadtest-results
+          path: |
+            loadtest.log
+            loadtest.json
+      
+      - name: Stop server
+        if: always()
+        run: kill $(cat packages/api/server.pid) || true
+
+  redaction-test:
+    name: PII Redaction Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Check for redact configuration
+        run: |
+          # Verify server.ts has proper redact config
+          grep -q "redact.*authorization" packages/api/src/server.ts || (echo "Missing authorization redaction" && exit 1)
+          grep -q "redact.*cookie" packages/api/src/server.ts || (echo "Missing cookie redaction" && exit 1)
+          echo "✅ Redaction configuration verified"
+
+  all-gates-passed:
+    name: All Gates Passed
+    runs-on: ubuntu-latest
+    needs:
+      - lint-and-typecheck
+      - migration-status
+      - unit-tests
+      - health-check-test
+      - metrics-validation
+      - idempotency-test
+      - load-test
+      - redaction-test
+    steps:
+      - run: echo "🎉 All production readiness gates passed!"

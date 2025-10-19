@@ -53,15 +53,11 @@ export const syncOperationsTotal = new client.Counter({
   name: "sync_operations_total",
   help: "Total number of sync operations",
   labelNames: ["operation", "source", "status"],
+  registers: [register]
 });
 
-// Register all metrics
-register.registerMetric(httpRequestDuration);
-register.registerMetric(httpRequestTotal);
-register.registerMetric(databaseQueryDuration);
-register.registerMetric(activeConnections);
-register.registerMetric(backgroundJobsTotal);
-register.registerMetric(syncOperationsTotal);
+// Note: Metrics are auto-registered via `registers: [register]` in constructor
+// No need to call register.registerMetric() explicitly - causes double-registration errors
 
 // Build info (gauge=1 with version label)
 export const buildInfo = g.__codexBuildInfo || new client.Gauge({
@@ -92,9 +88,15 @@ export const retryAttemptsTotal = new client.Counter({
   registers: [register]
 });
 
-register.registerMetric(buildInfo);
-register.registerMetric(ingestLatencySeconds);
-register.registerMetric(retryAttemptsTotal);
+// Deduplication counter for idempotency enforcement
+export const ingestDedupTotal = new client.Counter({
+  name: 'ingest_dedup_total',
+  help: 'Total number of deduplicated ingest requests',
+  labelNames: ['tenant', 'source'],
+  registers: [register]
+});
+
+// All metrics auto-registered via `registers: [register]` in constructor
 
 // Helper functions for recording metrics
 export function recordHttpRequest(
