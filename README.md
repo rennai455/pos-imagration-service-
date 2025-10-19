@@ -1,23 +1,76 @@
-# Codex Retail OS – POS Imagration Service
+# POS Migration Service
 
-[![Lint Script](https://img.shields.io/badge/lint-npm%20run%20lint-blue?style=flat-square)](#lint)
-[![Test Script](https://img.shields.io/badge/test-npm%20run%20test-green?style=flat-square)](#test)
-[![Deploy Script](https://img.shields.io/badge/deploy-npm%20run%20deploy-purple?style=flat-square)](#deploy)
+[![CI/CD](https://github.com/rennai455/pos-imagration-service/actions/workflows/cd.yml/badge.svg)](https://github.com/rennai455/pos-imagration-service/actions/workflows/cd.yml)
 
-## Project Overview
-The POS Imagration Service is part of the Codex Retail OS initiative—a unified, cloud-native platform that modernizes retail operations. This service will handle point-of-sale data ingestion, synchronization, and downstream processing so that stores, mobile associates, and digital channels all share a consistent, real-time view of inventory and transactions. The roadmap centers on:
+A modern point-of-sale system with offline-first capabilities and seamless data synchronization.
 
-- Consolidating legacy POS feeds into a single ingestion pipeline with strong observability.
-- Powering omnichannel customer experiences through real-time APIs and event streams.
-- Providing developers with a shared toolkit, documentation, and standards for building on top of the Codex Retail OS.
+## Features
 
-As new functional specs and architecture decisions are finalized, they will be published in the `/docs` directory, with supporting research, diagrams, and reference assets collected under `/resources`.
+- 🔄 Offline-first architecture with data sync
+- 🚀 High-performance API with Fastify
+- 📱 Mobile SDK for device integration
+- 🎯 Real-time inventory management
+- 🔒 Secure authentication with Supabase
+- 📊 Admin dashboard for monitoring
 
-## Monorepo Structure
-This repository is planned as a monorepo so each domain team can iterate independently while sharing tooling. The high-level layout will evolve, but is expected to include:
+## Quick Start
 
-- `apps/api` – Fastify-based services for POS ingestion, transformation, and public APIs.
-- `apps/web` – Next.js dashboards for operations, observability, and configuration.
+1. **Prerequisites**
+   ```bash
+   # Install required tools
+   npm install -g pnpm
+   ```
+
+2. **Setup Environment**
+   ```bash
+   # Install dependencies
+   pnpm install
+
+   # Set up environment files
+   pnpm setup
+
+   # Start PostgreSQL database
+   docker compose up -d
+   ```
+
+3. **Start Development Servers**
+   ```bash
+   # API Server
+   pnpm dev:api
+
+   # Admin Dashboard
+   pnpm dev:admin
+
+   # Mobile SDK
+   pnpm dev:sdk
+   ```
+
+## Development
+
+### Diagnostics
+
+```bash
+# Run all diagnostics
+pnpm validate
+
+# Individual checks
+pnpm diag:net   # Network diagnostics
+pnpm diag:env   # Environment validation
+pnpm diag:db    # Database connection test
+```
+
+### Database Management
+
+```bash
+# Run migrations
+pnpm -F @codex/db prisma migrate dev
+
+# Reset database
+pnpm -F @codex/db prisma migrate reset
+
+# View data
+pnpm -F @codex/db prisma studio
+```
 - `apps/mobile` – Expo applications for in-store associates and field teams.
 - `packages/core` – Shared TypeScript utilities, schema definitions, and API clients.
 - `packages/ui` – Cross-platform component libraries for web and mobile experiences.
@@ -86,3 +139,24 @@ We welcome contributions from every Codex Retail OS team. To keep development sm
 5. **Submit focused pull requests** with clear descriptions, screenshots (for UI changes), and notes about Supabase migrations or infrastructure impacts.
 
 For questions, jump into the Codex Retail OS channel or mention the platform team. We will keep this README and the `/docs` directory updated as the project matures so newcomers can onboard quickly.
+
+## Local Postgres for Development
+To run a local Postgres for development quickly, use the provided `docker-compose.yml`:
+
+```bash
+docker-compose up -d
+```
+
+Example `DATABASE_URL` for local Postgres:
+
+```properties
+DATABASE_URL=postgresql://postgres:password@localhost:5432/codex_pos_dev
+```
+
+After starting Postgres and populating `.env`, run the Prisma generate and test connection:
+
+```bash
+pnpm --filter @codex/db run generate
+pnpm --filter @codex/db run test-connection
+```
+

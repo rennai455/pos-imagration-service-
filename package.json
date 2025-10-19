@@ -12,11 +12,29 @@
     "build:api": "pnpm --filter @codex/api build",
     "build:admin": "pnpm --filter @codex/admin build",
     "test:api": "pnpm --filter @codex/api test",
-    "lint:admin": "pnpm --filter @codex/admin lint"
+    "lint:admin": "pnpm --filter @codex/admin lint",
+    "diag:net": "powershell -ExecutionPolicy Bypass -File ./scripts/net-diagnose.ps1",
+    "diag:env": "ts-node ./scripts/validate-env.ts",
+    "diag:db": "pnpm --filter @codex/db exec ts-node ./src/connection.ts",
+    "setup": "ts-node ./scripts/setup-env.ts",
+    "validate": "pnpm diag:net && pnpm diag:env && pnpm diag:db"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^12.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^10.0.4",
+    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/release-notes-generator": "^13.0.0",
+    "@types/node": "^24.8.1",
+    "@types/winston": "^2.4.4",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
-    "eslint": "^8.57.0"
+    "conventional-changelog-conventionalcommits": "^7.0.2",
+    "eslint": "^8.57.0",
+    "semantic-release": "^23.0.8",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.3",
+    "winston": "^3.18.3"
   }
 }

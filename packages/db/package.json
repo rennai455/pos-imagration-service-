@@ -8,13 +8,19 @@
     "prisma"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "generate": "prisma generate",
+    "migrate": "prisma migrate dev",
+    "studio": "prisma studio",
+    "test-connection": "ts-node ./src/test-connection.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.15.0"
+    "@prisma/client": "^5.15.0",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.17",
+    "prisma": "^5.15.0",
     "typescript": "^5.3.3"
   }
 }
