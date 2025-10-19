@@ -35,6 +35,9 @@ COPY . .
 # Generate Prisma client
 RUN pnpm --filter @codex/db prisma generate
 
+# Build dependencies first (@codex/db must be built before @codex/api)
+RUN pnpm --filter @codex/db build
+
 # Build the API
 RUN pnpm --filter @codex/api build
 
