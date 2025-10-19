@@ -1,7 +1,9 @@
-import { FastifyRequest as BaseFastifyRequest } from 'fastify'
+import 'fastify'
 
 declare module 'fastify' {
-  export interface FastifyRequest extends BaseFastifyRequest {
+  interface FastifyRequest {
     startTime?: [number, number] // process.hrtime() return type
+    rawBody?: Buffer // Raw request body for webhook signature verification
+    webhookSource?: string // Verified webhook source
   }
 }

@@ -22,7 +22,7 @@ export default async function (server: FastifyInstance) {
     const { data, error } = await retry(
       async () => {
         const res = await supabase.auth.signInWithPassword({ email, password });
-        if (res.error && (res.error.status >= 500 || res.error.status === 429)) {
+        if (res.error && (res.error.status && (res.error.status >= 500 || res.error.status === 429))) {
           const e: any = new Error(res.error.message);
           e.status = res.error.status;
           throw e;
