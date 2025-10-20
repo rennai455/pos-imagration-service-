@@ -14,6 +14,10 @@ COPY packages/ui/package.json ./packages/ui/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/sdk/package.json ./apps/sdk/
 
+# Copy Prisma schema files (needed for postinstall hook)
+COPY packages/api/prisma ./packages/api/prisma
+COPY packages/db/prisma ./packages/db/prisma
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
