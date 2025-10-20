@@ -10,9 +10,10 @@ SHUTDOWN_GRACE_MS = "15000"
 METRICS_ENABLED = "true"
 
 [service.api]
-root = "."
-start = "pnpm --filter @codex/api start"
-preStart = "pnpm --filter @codex/api prisma migrate deploy"
+root = "packages/api"
+start = "pnpm start"
+# preStart runs from the root directory (packages/api), so use relative path
+preStart = "pnpm prisma migrate deploy --schema=./prisma/schema.prisma"
 
 [service.api.healthcheck]
 path = "/health/ready"
