@@ -1,0 +1,1 @@
+build: pnpm --filter @codex/db exec prisma generate && pnpm run build
