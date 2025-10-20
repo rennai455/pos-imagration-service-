@@ -12,8 +12,8 @@ METRICS_ENABLED = "true"
 [service.api]
 root = "packages/api"
 start = "pnpm start"
-# preStart runs from the root directory (packages/api), so use relative path
-preStart = "pnpm prisma migrate deploy --schema=./prisma/schema.prisma"
+# Prisma will use the "prisma.schema" config from package.json
+preStart = "pnpm prisma migrate deploy"
 
 [service.api.healthcheck]
 path = "/health/ready"
