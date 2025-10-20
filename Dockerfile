@@ -34,11 +34,10 @@ COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 # Copy ALL source code (including Prisma schemas)
 COPY . .
 
-# NOW generate Prisma clients (schemas exist now!)
-RUN pnpm --filter @codex/db prisma generate
-RUN pnpm --filter @codex/api prisma generate
+# Generate Prisma Client for @codex/db (now that schema exists)
+RUN pnpm --filter @codex/db exec prisma generate
 
-# Build dependencies first (@codex/db must be built before @codex/api)
+# Build @codex/db first (it imports @prisma/client types)
 RUN pnpm --filter @codex/db build
 
 # Build the API
