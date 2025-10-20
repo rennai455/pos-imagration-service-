@@ -65,10 +65,10 @@ export const buildServer = async (): Promise<FastifyInstance> => {
   // Configure metrics first (at root level)
   await server.register(require('./plugins/metrics').default);
 
-  // Configure security features
+  // Configure security and CORS
   await configureSecurityPlugin(server, {
     trustProxy: process.env.TRUST_PROXY === 'true',
-    corsOrigin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'],
+    corsOrigin: process.env.CORS_ALLOWED_ORIGINS?.split(',').map(o => o.trim()) || ['http://localhost:3000'],
     rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '100'),
     rateLimitTimeWindow: parseInt(process.env.RATE_LIMIT_WINDOW || '60000')
   });
@@ -184,6 +184,33 @@ export const buildServer = async (): Promise<FastifyInstance> => {
     reply.send(result);
   });
 
+  // Readiness probe for Railway health checks
+  // Returns 200 when ready to receive traffic (DB connected)
+  server.get('/health/ready', async (_req, reply) => {
+    try {
+      // 5-second timeout for DB check
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Database check timeout')), 5000);
+      });
+      
+      const dbCheck = prisma.$queryRaw`SELECT 1`;
+      await Promise.race([dbCheck, timeoutPromise]);
+      
+      reply.send({
+        status: 'ready',
+        database: 'connected',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      reply.status(503).send({
+        status: 'not ready',
+        database: 'disconnected',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Keep a single, comprehensive error handler
   // Preserve 429 responses from rate limiting and fall back appropriately
   server.setErrorHandler((error, request, reply) => {
@@ -274,7 +301,7 @@ const start = async () => {
 
   try {
   const port = Number(process.env.PORT || 4000);
-  const host = process.env.HOST || '127.0.0.1';
+  const host = '0.0.0.0'; // Railway requires binding to 0.0.0.0
   await server.listen({ port, host });
     
     // Update active connections metric

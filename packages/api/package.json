@@ -6,6 +6,7 @@
     "predev": "ts-node ../../scripts/validate-env.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
+    "prestart": "prisma migrate deploy",
     "start": "node dist/server.js",
     "test": "jest",
     "test:watch": "jest --watch",

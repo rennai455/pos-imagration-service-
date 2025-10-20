@@ -17,14 +17,16 @@
     "diag:env": "ts-node ./scripts/validate-env.ts",
     "diag:db": "pnpm --filter @codex/db exec ts-node ./src/connection.ts",
     "setup": "ts-node ./scripts/setup-env.ts",
-    "validate": "pnpm diag:net && pnpm diag:env && pnpm diag:db"
+    "validate": "pnpm diag:net && pnpm diag:env && pnpm diag:db",
+    "smoke": "node scripts/smoke-test.mjs",
+    "metrics:watch": "node scripts/monitor-metrics.mjs"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/commit-analyzer": "^12.0.0",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^10.0.4",
-    "@semantic-release/npm": "^12.0.1",
+    "@semantic-release/npm": "^12.0.1", 
     "@semantic-release/release-notes-generator": "^13.0.0",
     "@types/node": "^24.8.1",
     "@types/winston": "^2.4.4",

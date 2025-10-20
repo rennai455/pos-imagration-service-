@@ -1,13 +1,19 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: z.string().min(1),
+  DATABASE_URL: z.string().min(1), // Railway uses sslmode=disable, not a valid URL
+  WEBHOOK_SECRET: z.string().min(32),
+  CORS_ALLOWED_ORIGINS: z.string().min(1), // CSV format
   JWT_SECRET: z.string().min(32),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  HOST: z.string().default('127.0.0.1'),
-  PORT: z.coerce.number().positive().default(3000),
+  HOST: z.string().default('0.0.0.0'), // Railway requires 0.0.0.0
+  PORT: z.coerce.number().positive().default(4000),
+  REQUEST_TIMEOUT_MS: z.coerce.number().positive().default(30000),
+  CONNECTION_TIMEOUT_MS: z.coerce.number().positive().default(60000),
+  SHUTDOWN_GRACE_MS: z.coerce.number().positive().default(15000),
+  // Optional Supabase (not required for Railway deployment)
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_ANON_KEY: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

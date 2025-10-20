@@ -1,0 +1,20 @@
+# railway.toml
+[build]
+builder = "NIXPACKS"
+
+[env]
+NODE_ENV = "production"
+REQUEST_TIMEOUT_MS = "30000"
+CONNECTION_TIMEOUT_MS = "60000"
+SHUTDOWN_GRACE_MS = "15000"
+METRICS_ENABLED = "true"
+
+[service.api]
+root = "."
+start = "pnpm --filter @codex/api start"
+preStart = "pnpm --filter @codex/api prisma migrate deploy"
+
+[service.api.healthcheck]
+path = "/health/ready"
+interval = 10000
+timeout  = 10000
