@@ -65,6 +65,8 @@ COPY --from=build --chown=nodejs:nodejs /app/packages/api/package.json ./package
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/dist ./packages/db/dist
 COPY --from=build --chown=nodejs:nodejs /app/packages/db/package.json ./packages/db/
 COPY --from=build --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=build --chown=nodejs:nodejs /app/packages/api/node_modules ./packages/api/node_modules
+COPY --from=build --chown=nodejs:nodejs /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=build --chown=nodejs:nodejs /app/package.json ./
 
 # Switch to non-root user
