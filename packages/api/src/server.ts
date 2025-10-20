@@ -1,8 +1,4 @@
-// Load environment variables in development
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv/config');
-}
-
+import './utils/env'; // Loads dotenv in development
 import Fastify, { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { prisma } from './lib/db';
 import { validateEnv } from './utils/env';

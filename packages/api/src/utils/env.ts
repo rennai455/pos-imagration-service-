@@ -1,3 +1,12 @@
+// Load environment variables in development only
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    require('dotenv').config();
+  } catch {
+    // dotenv not available in production, that's fine
+  }
+}
+
 import { z } from 'zod';
 
 const envSchema = z.object({
