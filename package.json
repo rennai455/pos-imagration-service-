@@ -11,7 +11,7 @@
     "dev:api": "pnpm --filter @codex/api dev",
     "dev:admin": "pnpm --filter @codex/admin dev",
     "dev:sdk": "pnpm --filter @codex/sdk start",
-    "build": "pnpm -r --filter @codex/* run build",
+    "build": "pnpm --filter @codex/db exec prisma generate && pnpm -r --filter @codex/* run build",
     "build:api": "pnpm --filter @codex/api build",
     "build:admin": "pnpm --filter @codex/admin build",
     "test:api": "pnpm --filter @codex/api test",

@@ -14,8 +14,8 @@ NIXPACKS_PNPM_VERSION = "8.15.4"
 [service.api]
 root = "packages/api"
 start = "pnpm start"
-# Prisma will use the "prisma.schema" config from package.json
-preStart = "pnpm prisma migrate deploy"
+# Use @codex/db as the schema owner for migrations
+preStart = "pnpm --filter @codex/db exec prisma migrate deploy"
 
 [service.api.healthcheck]
 path = "/health/ready"
