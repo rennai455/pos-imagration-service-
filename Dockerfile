@@ -1,12 +1,13 @@
 # Multi-stage Dockerfile for Codex Retail OS API
 FROM node:20-alpine AS deps
 
-# Install pnpm
+# Install pnpm and OpenSSL for Prisma
 RUN corepack enable && corepack prepare pnpm@8.15.4 --activate
+RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files for dependency resolution
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/api/package.json ./packages/api/
 COPY packages/db/package.json ./packages/db/
@@ -14,12 +15,9 @@ COPY packages/ui/package.json ./packages/ui/
 COPY apps/admin/package.json ./apps/admin/
 COPY apps/sdk/package.json ./apps/sdk/
 
-# Copy Prisma schema files (needed for postinstall hook)
-COPY packages/api/prisma ./packages/api/prisma
-COPY packages/db/prisma ./packages/db/prisma
-
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies WITHOUT running postinstall scripts
+# This avoids "prisma generate" running before schema files exist
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Build stage
 FROM node:20-alpine AS build
@@ -33,11 +31,12 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 
-# Copy source code
+# Copy ALL source code (including Prisma schemas)
 COPY . .
 
-# Generate Prisma client
+# NOW generate Prisma clients (schemas exist now!)
 RUN pnpm --filter @codex/db prisma generate
+RUN pnpm --filter @codex/api prisma generate
 
 # Build dependencies first (@codex/db must be built before @codex/api)
 RUN pnpm --filter @codex/db build
