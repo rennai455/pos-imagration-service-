@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Codex Retail OS API (root copy kept to maintain history; Railway should use Nixpacks)
+# Multi-stage Dockerfile for Codex Retail OS API (kept for local/docker builds)
 FROM node:20-alpine AS deps
 
 # Install pnpm and OpenSSL for Prisma
